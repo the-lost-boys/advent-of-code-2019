@@ -24,11 +24,19 @@
       0
       (+ fuel (fuel-calculator fuel)))))
 
+(defn fuel-calculator-recur
+  ([mass]
+   (fuel-calculator-recur mass 0))
+  ([mass total-fuel]
+   (let [added-fuel-mass (fuel-for-mass mass)]
+     (if (< added-fuel-mass 0)
+       total-fuel
+       (recur added-fuel-mass (+ total-fuel added-fuel-mass))))))
+
 (defn solve-part-2 []
   (->> input
-       (map fuel-calculator)
+       (map fuel-calculator-recur)
        (reduce +)))
 
-{:1 3216744
+{:1 3216744 
  :2 4822249}
-
