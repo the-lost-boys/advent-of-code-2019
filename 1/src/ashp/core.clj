@@ -16,6 +16,6 @@
 (defn solve-part-2 []
   "part 2")
 
-{:1 (solve-part-1)
+{:1 3216744
  :2 (solve-part-2)}
 
