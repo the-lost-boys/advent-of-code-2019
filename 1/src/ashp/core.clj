@@ -13,9 +13,22 @@
        (map #(- % 2))
        (reduce +))) 
 
+(defn fuel-for-mass
+  [mass]
+  (- (int (Math/floor (/ mass 3))) 2))
+
+(defn fuel-calculator 
+  [mass]
+  (let [fuel (fuel-for-mass mass)]
+    (if (< fuel 0)
+      0
+      (+ fuel (fuel-calculator fuel)))))
+
 (defn solve-part-2 []
-  "part 2")
+  (->> input
+       (map fuel-calculator)
+       (reduce +)))
 
 {:1 3216744
- :2 (solve-part-2)}
+ :2 4822249}
 
