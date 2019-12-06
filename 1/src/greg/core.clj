@@ -101,14 +101,31 @@
             100870
             110806])
 
+(defn fuel-per-module
+  [module]
+  (- (int (/ module 3)) 2))
+
 (defn calculate-fuel-requirements
   [input-data]
-  (let [fuel-per-module (fn [module]
-                          (- (int (/ module 3)) 2))
-        input-data-fuel-requirements (map fuel-per-module input-data)
+  (let [input-data-fuel-requirements (map fuel-per-module input-data)
         summed-fuel-requirements (reduce + input-data-fuel-requirements)]
     summed-fuel-requirements))
 
 (comment
   ;; ANSWER 
   (calculate-fuel-requirements input))
+
+
+(defn calculate-additional-fuel-requirements
+  [input-data]
+  (loop [fuel (fuel-per-module input-data)
+         fuel-amounts '()]
+    (cond
+      (> fuel 0) (recur (fuel-per-module fuel) (conj fuel-amounts fuel))
+      :else fuel-amounts)))
+
+(comment
+  ;; ANSWER 
+  (->> (map calculate-additional-fuel-requirements input)
+       (flatten)
+       (reduce +)))
