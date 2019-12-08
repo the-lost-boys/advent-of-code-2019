@@ -9,28 +9,36 @@
 
 (def input (safe-read-string (str "[" (slurp "src/justin/input.txt") "]")))
 
-(defn- take-four
-  [start v]
-  (mapv #(nth v %)
-        (range start
-               (+ start 4))))
+(defn- slice
+  "Starting at `start`, take until `end` or the sequence ends, using `s`."
+  {:test (fn []
+           (is (= '(6 7 8)
+                  (slice 5 8 [1 2 3 4 5 6 7 8])))
+           (is (= '(6 7 8 9)
+                  (slice 5 8 [1 2 3 4 5 6 7 8 9])))
+           (is (= '(6 7 8 9)
+                  (slice 5 8 [1 2 3 4 5 6 7 8 9 10]))))}
+  [start end s]
+  (take (inc (- end start)) (drop start s)))
 
 (defn execute-once
+  "Evaluates to a tuple of next index and updated program state.
+  Index is `nil` when the program is finished executing."
   {:test (fn []
-           (is (= [1 9 10 70
-                   2 3 11 0
-                   99
-                   30 40 50]
+           (is (= [4 [1 9 10 70
+                      2 3 11 0
+                      99
+                      30 40 50]]
                   (execute-once
                    0
                    [1 9 10 3
                     2 3 11 0
                     99
                     30 40 50])))
-           (is (= [3500 9 10 70
-                   2 3 11 0
-                   99
-                   30 40 50]
+           (is (= [8 [3500 9 10 70
+                      2 3 11 0
+                      99
+                      30 40 50]]
                   (execute-once
                    4
                    [1 9 10 70
@@ -38,18 +46,22 @@
                     99
                     30 40 50]))))}
   [index program]
-  (let [[opcode index1 index2 out :as taken] (take-four index program)
-        operator                             (case opcode
-                                               1 +
-                                               2 *
-                                               (throw (ex-info "HCF" {})))
-        [input1 input2 :as inputs]           (mapv #(nth program %)
-                                                   [index1 index2])]
-    (assoc program
-           out
-           (operator
-            input1
-            input2))))
+  (let [operation (slice index (+ index 3) program)
+        opcode    (first operation)]
+    (if (= 99 opcode)
+      [nil program]
+      (let [[index1 index2 out] (rest operation)
+            operator            (case opcode
+                                  1 +
+                                  2 *)
+            [input1 input2]     (mapv #(nth program %)
+                                      [index1 index2])
+            next-index          (+ index 4)]
+        [next-index (assoc program
+                           out
+                           (operator
+                            input1
+                            input2))]))))
 
 (defn execute-all
   {:test (fn []
@@ -62,12 +74,13 @@
            (is (= [30 1 1 4 2 5 6 0 99]
                   (execute-all [1 1 1 4 99 5 6 0 99]))))}
   [program]
-  (loop [current program
-         index   0]
-    (let [halt (= 99 (nth current index))]
+  (loop [index   0
+         current program]
+    (let [halt (nil? index)]
       (if halt
         current
-        (recur (execute-once index current) (+ index 4))))))
+        (let [[next-index next-program] (execute-once index current)]
+          (recur next-index next-program))))))
 
 (defn part-one-solution
   [program]
