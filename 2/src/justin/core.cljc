@@ -83,8 +83,33 @@
           (recur next-index next-program))))))
 
 (defn part-one-solution
+  ([program]
+   (part-one-solution program 12 2))
+  ([program input1 input2]
+   (nth (execute-all (assoc program
+                            1 input1
+                            2 input2))
+        0)))
+
+;; * Part two
+
+(defn brute-force-find-inputs
+  "Naively tries every possible combination of inputs until the two
+  that produce the desired output are found.
+  Evaluates to a pair of such inputs."
   [program]
-  (nth (execute-all (assoc program
-                           1 12
-                           2 2))
-       0))
+  (let [target-out 19690720
+        inputs     (for [in1 (range 1 100)
+                         in2 (range 1 100)]
+                     [in1 in2])]
+    (loop [remaining inputs]
+      (let [[in1 in2 :as input] (first remaining)
+            out                 (part-one-solution program in1 in2)]
+        (if (= target-out out)
+          input
+          (recur (rest remaining)))))))
+
+(defn part-two-solution
+  [program]
+  (let [[noun verb] (brute-force-find-inputs program)]
+    (+ (* 100 noun) verb)))
