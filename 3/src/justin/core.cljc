@@ -9,6 +9,9 @@
 (def parse-integer #?(:clj #(java.lang.Integer/parseInt %)
                       :cljs #(js/parseInt %)))
 
+(def sqrt #?(:clj #(java.lang.Math/sqrt %)
+             :clsj #(js/Math.sqrt %)))
+
 (def abs #?(:clj #(java.lang.Math/abs %)
             :cljs #(js/Math.abs %)))
 
@@ -19,6 +22,17 @@
         [wx wy] w]
     (- (* vx wy)
        (* vy wx))))
+
+(defn take-pairs
+  [s t]
+  (if (or (empty? s) (empty? t))
+    '()
+    (cons [(first s) (first t)]
+          (lazy-seq (take-pairs (rest s) (rest t))))))
+
+(deftest take-pairs-test
+  (is (= [[1 :a] [2 :b]]
+         (take-pairs [1 2] [:a :b]))))
 
 (defn vec-add
   [v w]
@@ -35,6 +49,19 @@
 (defn vec-sub
   [v w]
   (vec-add v (vec-mul -1 w)))
+
+(defn dot-product
+  [u v]
+  (reduce + (map #(apply * %) (take-pairs u v))))
+
+(defn vec-length
+  [v]
+  (sqrt (dot-product v v)))
+
+(deftest vec-length-test
+  (is (= 1.0 (vec-length [0 1])))
+  (is (= 1.0 (vec-length [1 0])))
+  (is (= 0.0 (vec-length [0 0]))))
 
 ;; ** Solution
 
@@ -195,3 +222,86 @@
   (min-distance (intersections (map commands-to-line-segments
                                     (map parse-commands
                                          input)))))
+
+;; * Part two
+
+(defn point-on-segment?
+  "True when the given `point` is on the line `segment`.
+  See https://stackoverflow.com/a/328122"
+  [point segment]
+  (let [[a b] segment
+        ba    (vec-sub b a)
+        pa    (vec-sub point a)]
+    (when (zero? (cross-product ba pa))
+      (let [segment-dot (dot-product ba ba)
+            point-dot   (dot-product ba pa)]
+        (<= 0 point-dot segment-dot)))))
+
+(deftest point-on-segment-test
+  (is (point-on-segment? [3 3] [[3 5] [3 2]])))
+
+(defn wire-up-to-point
+  "Evaluates to the portion of the given `wire` trimmed to the given point on it."
+  [point wire]
+  (loop [remaining wire
+         results   []]
+    (let [current (first remaining)]
+      (cond
+        (empty? remaining)                results
+        (point-on-segment? point current) (let [trimmed (assoc current 1 point)]
+                                            (conj results trimmed))
+        :otherwise                        (recur (rest remaining)
+                                                 (conj results current))))))
+
+(deftest wire-up-to-point-test
+  (is (= [[[0 0] [8 0]]
+          [[8 0] [8 5]]
+          [[8 5] [3 5]]
+          [[3 5] [3 3]]]
+         (wire-up-to-point [3 3] [[[0 0] [8 0]]
+                                  [[8 0] [8 5]]
+                                  [[8 5] [3 5]]
+                                  [[3 5] [3 2]]]))))
+
+(defn segment-length
+  "Evaluates to the length of a line segment."
+  [segment]
+  (let [[p1 p2] segment
+        x       first
+        y       second
+        dx      (abs (- (x p2)
+                        (x p1)))
+        dy      (abs (- (y p2)
+                        (y p1)))]
+    (int (vec-length [dx dy]))))        ;; integers only for this puzzle
+
+(deftest segment-length-test
+  (is (= 1
+         (segment-length [[0 0] [0 1]])))
+  (is (= 1
+         (segment-length [[0 0] [1 0]]))))
+
+(defn wire-length
+  "Calculates the length of a wire.
+  The wire is expected to be a sequence of line segments.
+  Each line segment is expected to be a tuple of 2D coordinates."
+  [wire]
+  (reduce + (map segment-length wire)))
+
+(defn joined-lengths
+  [wires]
+  (mapcat identity
+          (map (fn [pair]
+                 (let [intersections (apply intersections-for-two pair)
+                       trimmed-pairs (map #(mapv (partial wire-up-to-point %) pair)
+                                          intersections)
+                       length-pairs  (map #(mapv wire-length %) trimmed-pairs)
+                       lengths       (map #(apply + %) length-pairs)]
+                   lengths))
+               (combinations-of-two wires))))
+
+(defn part-two-solution
+  [input]
+  (reduce min (joined-lengths (map commands-to-line-segments
+                                   (map parse-commands
+                                        input)))))
