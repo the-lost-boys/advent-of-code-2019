@@ -139,28 +139,26 @@
          (intersections-for-two [[[3 5] [3 2]]]
                                 [[[6 3] [2 3]]]))))
 
+(defn combinations-of-two
+  "Creates tuples of each item in `s` with another."
+  [s]
+  (if (empty? s)
+    '()
+    (let [head      (first s)
+          remaining (rest s)]
+      (lazy-cat (map #(vector head %) remaining)
+                (combinations-of-two remaining)))))
+
 (defn intersections
   "Accepts a sequence of `wires`,
   in which each wire is a sequence of line segments with a start and end,
   and evaluates to the intersecting points among the wires.
   Doesn't include intersections of a wire with itself."
   [wires]
-  (let [wires-coll (vec wires)]
-    (distinct
-     (remove #(= [0 0] %)
-             (reduce (fn [acc i]
-                       (let [current    (nth wires-coll i)
-                             others     (map second
-                                             (filter #(not= i (first %))
-                                                     (map-indexed vector
-                                                                  wires-coll)))
-                             intersects (mapcat identity
-                                                (map #(intersections-for-two
-                                                       current %)
-                                                     others))]
-                         (concat acc intersects)))
-                     []
-                     (range (count wires-coll)))))))
+  (distinct
+   (remove #(= [0 0] %)
+           (mapcat #(apply intersections-for-two %)
+                   (combinations-of-two wires)))))
 
 (deftest intersections-test
   (is (= #{[3 3]
