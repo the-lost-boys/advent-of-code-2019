@@ -41,9 +41,11 @@
   "Generates a sequence of the valid numbers between
   the inclusive `lower` and `upper` bounds."
   [lower upper]
-  (let [inclusive (update input 1 inc)]
-    (filter is-valid-number? (apply range input))))
+  (filter is-valid-number? (range lower (inc upper))))
 
 (defn part-one-solution
   [input]
   (count (apply valid-numbers input)))
+
+(deftest part-one-solution-test
+  (is (= 1150 (part-one-solution input))))
