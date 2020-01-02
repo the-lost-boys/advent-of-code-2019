@@ -28,7 +28,9 @@
 (defn make-lines
   [directions]
   (->> (reductions (fn [acc m]
-                     (assoc acc :start (get acc :stop [0 0])
+                     (assoc acc
+                            :direction (make-direction-vector m)
+                            :start (get acc :stop [0 0])
                             :stop (make-vector-point
                                    (get acc :stop [0 0])
                                    (make-direction-vector m)))) {} directions)
@@ -81,6 +83,17 @@
     (linear-intersection [(:start w1) (:stop w1)]
                          [(:start w2) (:stop w2)])))
 
+(defn find-all-intersections-with-directions
+  [wire-1 wire-2]
+  (for [w1 wire-1
+        w2 wire-2]
+    (let [intersection (linear-intersection [(:start w1) (:stop w1)]
+                                            [(:start w2) (:stop w2)])]
+      (when (not (nil? intersection))
+        {:intersection intersection
+         :w1 w1
+         :w2 w2}))))
+
 (defn manhattan-distance
   [point1 point2]
   (let [[x1 y1] point1
@@ -88,11 +101,35 @@
     (+ (abs (- x2 x1))
        (abs (- y2 y1)))))
 
+(defn vector-distance
+  [direction-v]
+  (apply abs (remove zero? direction-v)))
+
+(defn distance-to-intersection
+  [start-v intersection]
+  (vector-distance (vec-sub intersection start-v)))
+
+(defn steps-for-wire
+  [intersection-map wires wire-key]
+  (loop [w wires
+         steps 0]
+    (cond
+      (= (first w)
+         (wire-key intersection-map)) (+ steps
+                                         (distance-to-intersection (get-in intersection-map [wire-key :start])
+                                                                   (:intersection intersection-map)))
+      :else (recur (rest w)
+                   (+ steps (vector-distance (:direction (first w))))))))
+
 (comment
   ;;ANSWER PART 1
   (apply min (map #(manhattan-distance [0 0] %)
                   (remove nil?
                           (find-all-intersections (make-lines wire-1)
-                                                  (make-lines wire-2))))))
-
-
+                                                  (make-lines wire-2)))))
+;;ANSWER PART 2
+  (apply min (let [intersections (remove nil? (find-all-intersections-with-directions (make-lines wire-1)
+                                                                                      (make-lines wire-2)))]
+               (for [i intersections]
+                 (+ (steps-for-wire i (make-lines wire-1) :w1)
+                    (steps-for-wire i (make-lines wire-2) :w2))))))
