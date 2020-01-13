@@ -128,3 +128,108 @@
   "Executes the given program. The final output to `*out*` is the solution."
   [program]
   (execute-all program))
+
+;; * Part two
+
+(defn jump-conditional
+  [{:keys [true-or-false parameter-modes]} {:keys [program index] :as _state}]
+  (let [[param-1 param-2] (slice (inc index) (+ index 2) program)
+        [input-1 input-2] (map (fn [[mode param]]
+                                 (handle-param mode param program))
+                               (map (fn [[i param]]
+                                      (let [mode (nth parameter-modes i 0)]
+                                        [mode param]))
+                                    (map-indexed vector
+                                                 [param-1 param-2])))
+        jump              (case true-or-false
+                            true  (not (zero? input-1))
+                            false (zero? input-1))]
+    (if jump
+      {:index   input-2
+       :program program}
+
+      {:index   (+ 3 index)
+       :program program})))
+
+(defn comparison
+  [{:keys [operator parameter-modes]} {:keys [index program] :as _state}]
+  (let [[param-1 param-2 out] (slice (inc index) (+ index 3) program)
+        [input-1 input-2]     (map (fn [[mode param]]
+                                     (handle-param mode param program))
+                                   (map (fn [[i param]]
+                                          (let [mode (nth parameter-modes i 0)]
+                                            [mode param]))
+                                        (map-indexed vector
+                                                     [param-1 param-2])))
+        result                (if (operator input-1 input-2)
+                                1
+                                0)]
+    {:index   (+ 4 index)
+     :program (assoc program out result)}))
+
+(defn execute-once-part-two
+  [{:keys [index program] :as state}]
+  (let [operation                 (nth program index)
+        {:keys [opcode
+                parameter-modes]} (parse-operation operation)]
+    (case opcode
+      ;; halt
+      99 (dissoc state :index)
+
+      ;; add
+      1 (binary-operation {:operator        +
+                           :parameter-modes parameter-modes}
+                          state)
+
+      ;; multiply
+      2 (binary-operation {:operator        *
+                           :parameter-modes parameter-modes}
+                          state)
+
+      ;; read-input
+      3 (let [input (int (safe-read))
+              out   (nth program (inc index))]
+          {:index   (+ index 2)
+           :program (assoc program out input)})
+
+      ;; output
+      4 (let [param-1 (nth program (inc index))
+              input-1 (handle-param (nth parameter-modes 0 0) param-1 program)]
+          (prn input-1)
+          {:index   (+ index 2)
+           :program program})
+
+      ;; jump-if-true
+      5 (jump-conditional {:true-or-false   true
+                           :parameter-modes parameter-modes} state)
+
+      ;; jump-if-false
+      6 (jump-conditional {:true-or-false   false
+                           :parameter-modes parameter-modes} state)
+
+      ;; less than
+      7 (comparison {:operator        <
+                     :parameter-modes parameter-modes}
+                    state)
+
+      ;; equals
+      8 (comparison {:operator        =
+                     :parameter-modes parameter-modes}
+                    state))))
+
+(defn execute-all-part-two
+  "Executes the given `program` until a 'halt' (99) instruction is reached.
+  Evaluates to the final state of the program.
+  This means it is possible for a program to execute indefinitely."
+  [program]
+  (loop [state {:program program
+                :index   0}]
+    (let [halt (nil? (:index state))]
+      (if halt
+        (:program state)
+        (let [next-state (execute-once-part-two state)]
+          (recur next-state))))))
+
+(defn part-two-solution
+  [program]
+  (execute-all-part-two program))
